@@ -1,104 +1,115 @@
 # Exit Compass Lite
 
-Exit Compass is a one-script Ambiguous coworker for the moment an account manager leaves. It reads synthetic Maya Chen / Acme Corp evidence across Mail, CRM, Tasks, Docs, and Calendar, asks OpenAI for one strictly validated risk plan, writes an evidence-linked handoff brief and an unsent client-update draft, then waits for explicit manager approval before creating exactly three tasks.
+Exit Compass es un compañero de trabajo de Ambiguous para el momento en que una persona responsable de cuentas se va. Lee evidencia sintética de Maya Chen y Acme Corp en Mail, CRM, Tasks, Docs y Calendar; usa una llamada estructurada de OpenAI para encontrar riesgos; crea un Brief de traspaso y un borrador de actualización al cliente; y espera aprobación explícita antes de crear tareas.
 
-The workspace is the interface. There is no frontend, database, or automatic client communication.
+La idea central: cuando alguien se va, su trabajo no debería irse con esa persona.
 
-## Setup
+## Configuración
 
-Requirements: Node 18+ (native `fetch`) and an Ambiguous agent workspace. The Ambiguous CLI can provision one with:
-
-```bash
-npx ambiguous auth signup --name "Exit Compass" --human-email YOUR_EMAIL
-```
-
-Copy the environment template and add secrets locally:
+Requisitos: Node 18 o superior, `fetch` nativo y un espacio de trabajo de Ambiguous.
 
 ```bash
-cp .env.example .env
 npm install
+cp .env.example .env
 ```
 
-Set `AMBIGUOUS_API_KEY` to the agent key from the Ambiguous CLI and `OPENAI_API_KEY` to an OpenAI API key. `AMBIGUOUS_INBOX_ADDRESS` is optional and defaults to the non-deliverable synthetic address `exit-compass@example.com`; the seed uses the documented Mail send endpoint only to create synthetic evidence, never to contact a real client.
-
-## Run the demo
+Configura en `.env`:
 
 ```bash
-npm run seed
+AMBIGUOUS_API_KEY=tu_clave_de_agente_de_ambiguous
+OPENAI_API_KEY=tu_clave_de_openai
+AMBIGUOUS_INBOX_ADDRESS=exit-compass@example.com
+```
+
+La dirección `example.com` es sintética y no entrega correo real.
+
+## Demo de producción en Ambiguous
+
+```bash
 npm run run
+```
+
+`run` reanuda automáticamente la semilla si `run.json` está vacío o incompleto. El flujo crea y conecta registros reales en Ambiguous:
+
+- 3 mensajes sintéticos de Mail sobre seguridad, precios y renovación;
+- 2 tareas abiertas de Maya;
+- 1 contacto de CRM de Acme;
+- 1 evento real en Calendar mediante `GET /api/calendars` y `POST /api/calendars/{calendarId}/events`;
+- 1 nota interna en Docs con diez exposiciones del traspaso;
+- 1 Brief de traspaso en Docs;
+- 1 borrador de actualización al cliente en Docs.
+
+Abre [app.ambiguous.ai](https://app.ambiguous.ai) y muestra las superficies Mail, CRM, Calendar, Docs y Tasks. El programa imprime URLs directas para cada registro.
+
+Después de explicar el límite de aprobación:
+
+```bash
 npm run approve
 ```
 
-`npm run run` is resumable: if `run.json` has no complete seed checkpoint, it automatically resumes `seed` before reading context. This prevents a failed partial seed from leaving the workflow permanently stuck at a precondition error.
+La aprobación solo crea estas tres acciones prioritarias, cada una enlazada al Brief:
 
-For an immediate credential-free demo of the complete approval boundary, run `npm run demo`. It writes deterministic `local://` IDs to `run.json`, prints the three detected risks, creates the brief/draft artifacts, and then creates exactly three locally simulated approved tasks. This mode is explicitly labeled `LOCAL DEMO`; the normal commands above use the real Ambiguous and OpenAI APIs.
+1. Completar el cuestionario de seguridad de Acme.
+2. Enviar el paquete de precios de Acme.
+3. Preparar el traspaso de la reunión de renovación de Acme.
 
-To present it visually in a browser, run `npm run demo:ui` and open `http://localhost:4173/demo.html`. This is a zero-dependency presenter screen backed by the generated `run.local.json` state.
+La frase exacta es `APPROVE_ACME_HANDOFF`. No se envía ningún mensaje externo automáticamente.
 
-The approval script is hard-coded to require `APPROVE_ACME_HANDOFF`; a different phrase is rejected. `run.json` stores only returned workspace IDs and artifact URLs, so the script can reread the exact seeded records and avoid duplicate runs. Delete or reset `run.json` only when you intentionally want a fresh synthetic scenario in a workspace.
+## Diez exposiciones del traspaso
 
-`seed` creates:
+El Brief y la nota interna muestran problemas que pueden desaparecer con Maya si nadie los asigna:
 
-- three synthetic Acme/Maya email messages through `POST /api/mail/send`;
-- two open Maya tasks through `POST /api/tasks`;
-- one Acme CRM contact through `POST /api/crm/contacts`;
-- one Acme renewal meeting through the live calendar-scoped route `POST /api/calendars/{calendarId}/events` (the seed discovers `calendarId` from `GET /api/calendars`);
-- one internal delivery note through `POST /api/documents`.
+1. Cuestionario de seguridad con fecha límite el viernes.
+2. Paquete de precios sin sucesor.
+3. Nueva persona responsable ausente en la reunión de renovación.
+4. Dependencia de configuración SSO.
+5. Responsable de DPA o Legal no definido.
+6. Enlace de evidencia SOC 2 potencialmente vencido.
+7. Aceptación de implementación no registrada.
+8. Escalación de soporte sin sucesor.
+9. Pronóstico de renovación desactualizado.
+10. Contacto de Compras u orden de compra desconocidos.
 
-`run` reads the persisted Mail/Task/Doc IDs plus bounded CRM contacts and Calendar events, then calls OpenAI once. It creates `Acme Handoff Brief — Maya Chen` and `Acme Client Update Draft — Awaiting Approval`. The brief includes a ten-item handoff exposure map covering security, pricing, ownership, legal, evidence freshness, implementation acceptance, support, forecast, and procurement. It never calls Mail send. `approve` creates only the three highest-priority containment tasks, once:
+La salida de OpenAI sigue siendo estrictamente validada y prioriza los tres riesgos inmediatos; las diez exposiciones hacen visible el impacto más amplio del traspaso.
 
-1. Complete Acme security questionnaire
-2. Send Acme pricing package
-3. Prepare Acme renewal meeting handoff
-
-Each created task carries the direct Handoff Brief URL in its description. The task creation boundary is the manager approval command; the script never changes ownership automatically and never sends the drafted client update.
-
-## Architecture
+## Arquitectura
 
 ```text
-seed
-  └─ Ambiguous REST API (Bearer key)
-       ├─ Mail / CRM / Tasks / Calendar / Docs synthetic records
-       └─ run.json: returned IDs only
-
-run
-  ├─ GET persisted records + bounded CRM/Calendar context
-  ├─ one OpenAI Responses API call
-  │    └─ strict JSON schema + local semantic validation
-  ├─ POST Handoff Brief
-  └─ POST unsent client-update draft
-
-approve APPROVE_ACME_HANDOFF
-  └─ POST exactly three Tasks, each linking to the Brief
+npm run run
+  ├─ Ambiguous REST: Mail / CRM / Tasks / Calendar / Docs
+  ├─ run.json: IDs reales devueltos por Ambiguous
+  ├─ OpenAI Responses API: una llamada JSON estructurada estricta
+  ├─ Docs: Brief de traspaso + borrador sin enviar
+  └─ npm run approve: exactamente 3 tareas enlazadas al Brief
 ```
 
-## API surface used
+## API utilizada
 
-The implementation uses the public Ambiguous REST base `https://app.ambiguous.ai`, bearer authentication, and the routes documented in Ambiguous's REST reference:
+- `POST /api/mail/send` y `GET /api/mail/:id`
+- `POST /api/crm/contacts` y `GET /api/crm/contacts`
+- `POST /api/tasks` y `GET /api/tasks/:id`
+- `GET /api/calendars` y `GET/POST /api/calendars/{calendarId}/events`
+- `POST /api/documents` y `GET /api/documents/:id`
 
-- `GET /api/mail/:id`, `POST /api/mail/send`
-- `GET /api/crm/contacts`, `POST /api/crm/contacts`
-- `GET /api/tasks/:id`, `POST /api/tasks`
-- `GET /api/calendars`, `GET/POST /api/calendars/{calendarId}/events`
-- `GET /api/documents/:id`, `POST /api/documents`
+El espacio de trabajo expone Calendar con rutas bajo `/api/calendars/{calendarId}/events`; las rutas antiguas sin alcance `/api/calendar/*` devuelven 404 en este entorno. `npm run diagnose-calendar` hace una comprobación de solo lectura.
 
-The public reference shows the same document block shape, calendar `title/start/end/attendees` fields, task `title/assignee/priority/due` fields, and `Authorization: Bearer ...` authentication. In the current live workspace, the unscoped `/api/calendar/*` documentation routes return 404; the workspace exposes calendars at `/api/calendars` and events beneath each returned calendar ID. `npm run diagnose-calendar` performs the read-only route check. The code uses the live calendar-scoped route and prints the route/body on failure rather than silently falling back to invented local data.
+## Demo local visual
 
-## Ponytail foundation
-
-This project uses [Dietrich Gebert's Ponytail](https://github.com/DietrichGebert/ponytail) as a development foundation and keeps its core rule: understand the end-to-end flow, then use the smallest safe implementation. It is included as a dev dependency; hosts that support the plugin can also install it with:
+Si las credenciales de producción no están disponibles:
 
 ```bash
-codex plugin marketplace add DietrichGebert/ponytail
-codex plugin add ponytail@ponytail
+npm run demo:ui
 ```
 
-The resulting code deliberately uses native `fetch`, native file I/O, one entry file, one model call, manual trust-boundary validation, and no HTTP or schema dependency.
+Abre [http://localhost:4173/demo.html](http://localhost:4173/demo.html). La pantalla muestra los tres riesgos, las diez exposiciones, los artefactos y el límite de aprobación usando datos sintéticos locales. La ejecución local escribe en `run.local.json`, que está ignorado por Git.
 
-## Security and limitations
+## Ponytail
 
-- `.env`, Ambiguous CLI credentials, `node_modules`, and build output are ignored.
-- Only synthetic `example.com` / `acme.example` identities appear in the seed.
-- The demo does not send to a real Acme address; `run` never sends mail at all.
-- The direct UI URL patterns are based on Ambiguous's documented resource paths (`/docs/:id`, `/tasks/:id`, `/mail/:id`, `/crm/contacts/:id`, `/calendar/events/:id`). Confirm them in the workspace UI during the demo.
-- Live end-to-end execution requires valid Ambiguous and OpenAI credentials plus the corresponding API permissions. This environment has no credentials, so external API behavior cannot be exercised here.
+El proyecto usa [Ponytail de Dietrich Gebert](https://github.com/DietrichGebert/ponytail) como base de desarrollo. Mantiene el enfoque de mínima complejidad: `fetch` nativo, I/O nativo, una entrada TypeScript, una llamada de modelo, validación manual en el límite de confianza y ninguna dependencia HTTP adicional.
+
+## Seguridad
+
+- `.env`, credenciales de Ambiguous, `node_modules`, `dist` y `run.local.json` están ignorados.
+- Todas las identidades del seed son sintéticas.
+- `run` nunca envía correo al cliente.
+- La creación de tareas está bloqueada hasta la frase de aprobación exacta.
