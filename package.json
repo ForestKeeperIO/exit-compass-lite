@@ -5,7 +5,9 @@
   "scripts": {
     "seed": "tsx src/index.ts seed",
     "run": "tsx src/index.ts run",
-    "approve": "tsx src/index.ts approve APPROVE_ACME_HANDOFF"
+    "approve": "tsx src/index.ts approve APPROVE_ACME_HANDOFF",
+    "demo": "tsx src/index.ts demo",
+    "diagnose-calendar": "tsx src/index.ts diagnose-calendar"
   },
   "devDependencies": {
     "@dietrichgebert/ponytail": "^4.9.0",
