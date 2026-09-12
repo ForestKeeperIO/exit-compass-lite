@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 const BASE_URL = "https://app.ambiguous.ai";
 const RUN_PATH = resolve("run.json");
+const LOCAL_RUN_PATH = resolve("run.local.json");
 const MAYA_EMAIL = "maya.chen@example.com";
 const ACME_CONTACT_EMAIL = "jordan.lee@acme.example";
 const APPROVAL_PHRASE = "APPROVE_ACME_HANDOFF";
@@ -72,7 +73,9 @@ async function ambiguous<T = JsonObject>(path: string, init: RequestInit = {}): 
     body = text;
   }
   if (!response.ok) {
-    throw new Error(`Ambiguous ${init.method ?? "GET"} ${path} -> ${response.status}: ${String(text).slice(0, 500)}`);
+    const allow = response.headers.get("allow");
+    const hint = allow ? ` (Allow: ${allow})` : "";
+    throw new Error(`Ambiguous ${init.method ?? "GET"} ${path} -> ${response.status}${hint}: ${String(text).slice(0, 500)}`);
   }
   return body as T;
 }
@@ -122,11 +125,18 @@ function recordUrl(kind: string, id: string): string {
 }
 
 function readState(): RunState {
-  return JSON.parse(readFileSync(RUN_PATH, "utf8")) as RunState;
+  const path = localDemoEnabled() ? LOCAL_RUN_PATH : RUN_PATH;
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as RunState;
+  } catch {
+    if (path !== RUN_PATH) return JSON.parse(readFileSync(RUN_PATH, "utf8")) as RunState;
+    throw new Error("run.json is missing or invalid.");
+  }
 }
 
 function saveState(state: RunState): void {
-  writeFileSync(RUN_PATH, `${JSON.stringify(state, null, 2)}\n`);
+  const path = localDemoEnabled() ? LOCAL_RUN_PATH : RUN_PATH;
+  writeFileSync(path, `${JSON.stringify(state, null, 2)}\n`);
 }
 
 function isoDate(date: Date): string {
@@ -148,8 +158,9 @@ function addDays(date: Date, days: number): Date {
 }
 
 async function seed(): Promise<void> {
+  if (localDemoEnabled()) return localSeed();
   const state = readState();
-  if (state.seed) {
+  if (state.seed && isCompleteSeed(state.seed)) {
     console.log("Seed already exists in run.json; keeping it to avoid duplicate workspace records.");
     printSeed(state.seed);
     return;
@@ -161,21 +172,41 @@ async function seed(): Promise<void> {
   const meetingEnd = addDays(meetingStart, 0);
   meetingEnd.setMinutes(60);
 
-  const contactResponse = await post("/api/crm/contacts", {
-    name: "Jordan Lee",
-    company: "Acme Corp",
-    email: ACME_CONTACT_EMAIL,
-  });
-  const contactId = firstId(contactResponse);
+  const seedData = state.seed ?? { dueDate: isoDate(due), renewalMeetingStart: meetingStart.toISOString() };
+  const seededDueDate = String(seedData.dueDate);
+  const seededMeetingStart = String(seedData.renewalMeetingStart);
+  const seededMeetingEnd = new Date(seededMeetingStart);
+  seededMeetingEnd.setMinutes(seededMeetingEnd.getMinutes() + 60);
+  state.seed = seedData;
+  saveState(state);
+
+  if (!asObject(seedData.contact).id) {
+    let contactId: string;
+    try {
+      const contactResponse = await post("/api/crm/contacts", {
+        type: "person",
+        name: "Jordan Lee — Acme Corp",
+        email: ACME_CONTACT_EMAIL,
+      });
+      contactId = firstId(contactResponse);
+    } catch (error) {
+      const match = (error instanceof Error ? error.message : String(error)).match(/contact_id["']?\s*:\s*["']([^"']+)["']/);
+      if (!match) throw error;
+      contactId = match[1];
+      console.log(`Reusing existing synthetic Acme contact ${contactId}.`);
+    }
+    seedData.contact = { id: contactId, url: recordUrl("contact", contactId) };
+    saveState(state);
+  }
 
   const mailBodies = [
     {
       subject: "Acme renewal: security questionnaire and pricing due Friday",
-      body_markdown: `From: Acme Corp <${ACME_CONTACT_EMAIL}>\n\nHi Maya, please send the completed security questionnaire and the renewal pricing package by ${isoDate(due)} (Friday).`,
+      body_markdown: `From: Acme Corp <${ACME_CONTACT_EMAIL}>\n\nHi Maya, please send the completed security questionnaire and the renewal pricing package by ${seededDueDate} (Friday).`,
     },
     {
       subject: "Re: Acme renewal: security questionnaire and pricing due Friday",
-      body_markdown: `From: Maya Chen <${MAYA_EMAIL}>\n\nWe will send both the completed security questionnaire and pricing package by Friday, ${isoDate(due)}.`,
+      body_markdown: `From: Maya Chen <${MAYA_EMAIL}>\n\nWe will send both the completed security questionnaire and pricing package by Friday, ${seededDueDate}.`,
     },
     {
       subject: "Acme renewal meeting confirmed for next week",
@@ -183,70 +214,69 @@ async function seed(): Promise<void> {
     },
   ];
   const inbox = process.env.AMBIGUOUS_INBOX_ADDRESS ?? "exit-compass@example.com";
-  const mailResponses = [];
-  for (const message of mailBodies) {
-    mailResponses.push(await post("/api/mail/send", { to: [inbox], ...message }));
+  const mailRecords = Array.isArray(seedData.mail) ? seedData.mail as JsonObject[] : [];
+  seedData.mail = mailRecords;
+  for (let index = mailRecords.length; index < mailBodies.length; index += 1) {
+    const response = await post("/api/mail/send", { to: [inbox], ...mailBodies[index] });
+    const id = firstId(response);
+    mailRecords.push({ id, url: recordUrl("mail", id) });
+    saveState(state);
   }
 
-  const taskResponses = await Promise.all([
-    post("/api/tasks", {
+  const taskBodies = [
+    {
       title: "Maya: Follow up on Acme pricing",
-      description: `Open Maya Chen task for ${isoDate(due)}. Client: Acme Corp.`,
+      description: `Open Maya Chen task for ${seededDueDate}. Client: Acme Corp.`,
       priority: "high",
-      due: isoDate(due),
-      assignee: MAYA_EMAIL,
-    }),
-    post("/api/tasks", {
+    },
+    {
       title: "Maya: Coordinate Acme security review",
-      description: `Open Maya Chen task for ${isoDate(due)}. Client: Acme Corp.`,
+      description: `Open Maya Chen task for ${seededDueDate}. Client: Acme Corp.`,
       priority: "high",
-      due: isoDate(due),
-      assignee: MAYA_EMAIL,
-    }),
-  ]);
+    },
+  ];
+  const taskRecords = Array.isArray(seedData.tasks) ? seedData.tasks as JsonObject[] : [];
+  seedData.tasks = taskRecords;
+  for (let index = taskRecords.length; index < taskBodies.length; index += 1) {
+    const response = await post("/api/tasks", taskBodies[index]);
+    const id = firstId(response);
+    taskRecords.push({ id, url: recordUrl("task", id) });
+    saveState(state);
+  }
 
-  const eventResponse = await post("/api/calendar/events", {
-    title: "Acme Corp renewal meeting",
-    start: meetingStart.toISOString(),
-    end: meetingEnd.toISOString(),
-    attendees: [MAYA_EMAIL, ACME_CONTACT_EMAIL],
-    notes: "Renewal meeting. Incoming account manager is not yet included.",
-  });
+  if (!asObject(seedData.calendarEvent).id) {
+    const calendars = await get("/api/calendars");
+    const calendar = listItems(calendars)[0] ?? {};
+    const calendarId = typeof calendar.id === "string" ? calendar.id : "";
+    if (!calendarId) throw new Error(`Ambiguous GET /api/calendars returned no calendar id: ${JSON.stringify(calendars).slice(0, 500)}`);
+    const eventResponse = await post(`/api/calendars/${encodeURIComponent(calendarId)}/events`, {
+      title: "Acme Corp renewal meeting",
+      start: seededMeetingStart,
+      end: seededMeetingEnd.toISOString(),
+      attendees: [MAYA_EMAIL, ACME_CONTACT_EMAIL],
+    });
+    const eventId = firstId(eventResponse);
+    seedData.calendarEvent = { id: eventId, calendarId, url: recordUrl("event", eventId) };
+    saveState(state);
+  }
 
-  const deliveryNoteResponse = await post("/api/documents", {
-    type: "doc",
-    title: "Acme delivery note — technical dependency",
-    content: [
-      { type: "heading", level: 1, text: "Acme delivery note" },
-      { type: "paragraph", text: "Synthetic internal note for the Exit Compass demo." },
-      { type: "paragraph", text: "Security review depends on the platform team's SSO configuration checklist before the questionnaire can be marked complete." },
-      { type: "paragraph", text: "Current relationship owner: Maya Chen. No successor is recorded." },
-    ],
-  });
+  if (!asObject(seedData.deliveryNote).id) {
+    const deliveryNoteResponse = await post("/api/documents", {
+      type: "doc",
+      title: "Acme delivery note — technical dependency",
+      content: [
+        { type: "heading", level: 1, text: "Acme delivery note" },
+        { type: "paragraph", text: "Synthetic internal note for the Exit Compass demo." },
+        { type: "paragraph", text: "Security review depends on the platform team's SSO configuration checklist before the questionnaire can be marked complete." },
+        { type: "paragraph", text: "Current relationship owner: Maya Chen. No successor is recorded." },
+      ],
+    });
+    const noteId = firstId(deliveryNoteResponse);
+    seedData.deliveryNote = { id: noteId, url: recordUrl("document", noteId) };
+    saveState(state);
+  }
 
-  const seedData: JsonObject = {
-    dueDate: isoDate(due),
-    renewalMeetingStart: meetingStart.toISOString(),
-    contact: { id: contactId, url: recordUrl("contact", contactId) },
-    mail: mailResponses.map((response) => {
-      const id = firstId(response);
-      return { id, url: recordUrl("mail", id) };
-    }),
-    tasks: taskResponses.map((response) => {
-      const id = firstId(response);
-      return { id, url: recordUrl("task", id) };
-    }),
-    calendarEvent: (() => {
-      const id = firstId(eventResponse);
-      return { id, url: recordUrl("event", id) };
-    })(),
-    deliveryNote: (() => {
-      const id = firstId(deliveryNoteResponse);
-      return { id, url: recordUrl("document", id) };
-    })(),
-  };
-
-  state.seed = seedData;
+  if (!isCompleteSeed(seedData)) throw new Error("Seed checkpoint is incomplete. Run `npm run seed` again to resume it.");
   saveState(state);
   printSeed(seedData);
   console.log("\nSeed complete. Run `npm run run` to analyze this bounded context.");
@@ -263,6 +293,89 @@ function printSeed(seed: JsonObject): void {
   }
 }
 
+function isCompleteSeed(seed: JsonObject): boolean {
+  return Boolean(
+    typeof seed.dueDate === "string" &&
+    asObject(seed.contact).id &&
+    Array.isArray(seed.mail) && (seed.mail as JsonObject[]).length === 3 &&
+    Array.isArray(seed.tasks) && (seed.tasks as JsonObject[]).length === 2 &&
+    asObject(seed.calendarEvent).id &&
+    asObject(seed.deliveryNote).id,
+  );
+}
+
+function localDemoEnabled(): boolean {
+  return process.env.EXIT_COMPASS_LOCAL_DEMO === "1";
+}
+
+function localUrl(kind: string, id: string): string {
+  return `local://${kind}/${id}`;
+}
+
+function localSeed(): void {
+  const state = readState();
+  const due = nextWeekday(5);
+  const meetingStart = addDays(due, 3);
+  meetingStart.setHours(14, 0, 0, 0);
+  const seed: JsonObject = {
+    dueDate: isoDate(due),
+    renewalMeetingStart: meetingStart.toISOString(),
+    contact: { id: "local_contact_acme", url: localUrl("crm/contacts", "local_contact_acme") },
+    mail: ["local_mail_security", "local_mail_maya_commitment", "local_mail_renewal"].map((id) => ({ id, url: localUrl("mail", id) })),
+    tasks: ["local_task_pricing", "local_task_security"].map((id) => ({ id, url: localUrl("tasks", id) })),
+    calendarEvent: { id: "local_event_renewal", calendarId: "local_calendar", url: localUrl("calendar/events", "local_event_renewal") },
+    deliveryNote: { id: "local_doc_dependency", url: localUrl("docs", "local_doc_dependency") },
+  };
+  state.seed = seed;
+  state.plan = null;
+  state.artifacts = null;
+  state.approval = null;
+  saveState(state);
+  printSeed(seed);
+  console.log("\nLocal demo seed complete.");
+}
+
+function localPlan(dueDate: string): HandoffPlan {
+  return {
+    summary: "Acme renewal work is at risk because Maya leaves Friday while security and pricing commitments are due Friday and the renewal meeting is next week.",
+    risks: [
+      { risk_type: "security_due", why_it_matters: "Acme expects the security questionnaire by Friday, and the internal dependency note says SSO configuration is still required.", deadline: dueDate, recommended_owner: "Incoming account manager", next_action: "Assign the SSO checklist owner and complete the questionnaire before Friday.", evidence_id: "local_mail_security" },
+      { risk_type: "pricing_unassigned", why_it_matters: "Maya promised pricing by Friday, but the existing open task does not have a successor after her departure.", deadline: dueDate, recommended_owner: "Sales manager delegate", next_action: "Assign the pricing package and confirm the delivery owner before Friday.", evidence_id: "local_mail_maya_commitment" },
+      { risk_type: "renewal_missing_incoming_am", why_it_matters: "The renewal meeting is next week and the confirmation asks for the incoming account manager, who is not yet recorded.", deadline: null, recommended_owner: "Sales manager", next_action: "Name the successor and add them to the renewal meeting before the client call.", evidence_id: "local_mail_renewal" },
+    ],
+    draft_client_update: "Hi Acme team, we are coordinating the security questionnaire and renewal pricing package ahead of Friday and will include the incoming account manager in next week's renewal meeting. We will confirm the handoff owner shortly.",
+  };
+}
+
+function runLocal(): void {
+  const state = readState();
+  if (!state.seed || !isCompleteSeed(state.seed)) throw new Error("Local seed is missing. Run `npm run demo`.");
+  const plan = localPlan(String(state.seed.dueDate));
+  state.plan = plan;
+  state.artifacts = {
+    brief: { id: "local_doc_handoff_brief", url: localUrl("docs", "local_doc_handoff_brief") },
+    clientUpdateDraft: { id: "local_doc_client_update", url: localUrl("docs", "local_doc_client_update") },
+  };
+  saveState(state);
+  console.log("\nExit Compass found exactly three evidence-backed risks (LOCAL DEMO):");
+  for (const risk of plan.risks) console.log(`  - ${risk.risk_type}: ${risk.next_action} [${risk.evidence_id}]`);
+  console.log(`\nHandoff Brief: ${String(state.artifacts.brief.url)}`);
+  console.log(`Unsent client-update draft: ${String(state.artifacts.clientUpdateDraft.url)}`);
+  console.log("\nApproval boundary: no client email was sent and no tasks were created.");
+}
+
+function approveLocal(phrase: string): void {
+  if (phrase !== APPROVAL_PHRASE) throw new Error(`Approval blocked. Use exactly: ${APPROVAL_PHRASE}`);
+  const state = readState();
+  if (!state.seed || !state.plan || !state.artifacts) throw new Error("Run `npm run demo` before approval.");
+  const titles = ["Complete Acme security questionnaire", "Send Acme pricing package", "Prepare Acme renewal meeting handoff"];
+  const taskIds = titles.map((_, index) => `local_handoff_task_${index + 1}`);
+  state.approval = { status: "approved", taskIds };
+  saveState(state);
+  console.log("Approval accepted. Exactly three handoff tasks exist and each links to the Handoff Brief (LOCAL DEMO):");
+  for (const [index, id] of taskIds.entries()) console.log(`  ${index + 1}. ${titles[index]}: ${localUrl("tasks", id)} -> ${String(state.artifacts.brief.url)}`);
+}
+
 function seedId(seed: JsonObject, key: string): string {
   return String(asObject(seed[key]).id);
 }
@@ -277,10 +390,12 @@ function seededIds(seed: JsonObject): string[] {
 async function readBoundedContext(seed: JsonObject): Promise<JsonObject[]> {
   const mail = await Promise.all((seed.mail as JsonObject[]).map(({ id }) => get(`/api/mail/${String(id)}`)));
   const tasks = await Promise.all((seed.tasks as JsonObject[]).map(({ id }) => get(`/api/tasks/${String(id)}`)));
+  const calendarId = String(asObject(seed.calendarEvent).calendarId ?? "");
+  if (!calendarId) throw new Error("Seeded calendar event is missing calendarId; run `npm run seed` again.");
   const [note, contacts, events] = await Promise.all([
     get(`/api/documents/${seedId(seed, "deliveryNote")}`),
     get("/api/crm/contacts?limit=25"),
-    get("/api/calendar/events?limit=25"),
+    get(`/api/calendars/${encodeURIComponent(calendarId)}/events?limit=25`),
   ]);
   const contactId = seedId(seed, "contact");
   const eventId = seedId(seed, "calendarEvent");
@@ -420,8 +535,14 @@ function blocksForBrief(plan: HandoffPlan, records: JsonObject[], dueDate: strin
 }
 
 async function run(): Promise<void> {
-  const state = readState();
-  if (!state.seed) throw new Error("No seed in run.json. Run `npm run seed` first.");
+  if (localDemoEnabled()) return runLocal();
+  let state = readState();
+  if (!state.seed || !isCompleteSeed(state.seed)) {
+    console.log("Seed checkpoint is missing or incomplete; resuming seed before analysis.");
+    await seed();
+    state = readState();
+  }
+  if (!isCompleteSeed(state.seed)) throw new Error("Seed is still incomplete after resume; inspect the preceding API error.");
   if (state.artifacts && state.plan) {
     console.log(`Run already complete. Brief: ${String(state.artifacts.brief.url)}`);
     console.log(`Client draft: ${String(state.artifacts.clientUpdateDraft.url)}`);
@@ -463,8 +584,41 @@ async function run(): Promise<void> {
   console.log(`Run: npm run approve`);
 }
 
+async function diagnoseCalendar(): Promise<void> {
+  const paths = [
+    "/api/calendar/events?limit=1",
+    "/api/calendar/availability",
+    "/api/calendars",
+    "/api/calendar",
+  ];
+  console.log("Calendar route probe (read-only):");
+  for (const path of paths) {
+    try {
+      const response = await get(path);
+      console.log(`  ${path} -> available ${JSON.stringify(response).slice(0, 220)}`);
+    } catch (error) {
+      console.log(`  ${path} -> ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  try {
+    const calendars = await get("/api/calendars");
+    const calendarId = String(asObject(listItems(calendars)[0]).id ?? "");
+    if (!calendarId) return;
+    const path = `/api/calendars/${encodeURIComponent(calendarId)}/events?limit=1`;
+    try {
+      const response = await get(path);
+      console.log(`  ${path} -> available ${JSON.stringify(response).slice(0, 220)}`);
+    } catch (error) {
+      console.log(`  ${path} -> ${error instanceof Error ? error.message : String(error)}`);
+    }
+  } catch {
+    // The base calendar probe above already reported the actionable error.
+  }
+}
+
 async function approve(phrase: string): Promise<void> {
   if (phrase !== APPROVAL_PHRASE) throw new Error(`Approval blocked. Use exactly: ${APPROVAL_PHRASE}`);
+  if (localDemoEnabled()) return approveLocal(phrase);
   const state = readState();
   if (!state.seed || !state.plan || !state.artifacts) throw new Error("Run `npm run run` before approval.");
   const briefUrl = String(state.artifacts.brief.url);
@@ -481,7 +635,6 @@ async function approve(phrase: string): Promise<void> {
       title: titles[index],
       description: `Manager-approved Acme handoff action. Recommended owner: incoming account manager or manager delegate. Handoff Brief: ${briefUrl}`,
       priority: "high",
-      due: String(state.seed.dueDate),
     });
     taskIds.push(firstId(task));
     state.approval = { status: "in_progress", taskIds };
@@ -499,7 +652,15 @@ async function main(): Promise<void> {
   if (command === "seed") return seed();
   if (command === "run") return run();
   if (command === "approve") return approve(argument ?? "");
-  throw new Error("Usage: npm run seed | npm run run | npm run approve");
+  if (command === "demo") {
+    process.env.EXIT_COMPASS_LOCAL_DEMO = "1";
+    localSeed();
+    runLocal();
+    approveLocal(APPROVAL_PHRASE);
+    return;
+  }
+  if (command === "diagnose-calendar") return diagnoseCalendar();
+  throw new Error("Usage: npm run seed | npm run run | npm run approve | npm run demo | npm run diagnose-calendar");
 }
 
 main().catch((error: unknown) => {
