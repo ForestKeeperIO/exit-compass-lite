@@ -1,0 +1,15 @@
+{
+  "name": "exit-compass-lite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "tsx src/index.ts seed",
+    "run": "tsx src/index.ts run",
+    "approve": "tsx src/index.ts approve APPROVE_ACME_HANDOFF"
+  },
+  "devDependencies": {
+    "@dietrichgebert/ponytail": "^4.9.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  }
+}

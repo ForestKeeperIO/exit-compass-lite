@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "scenario": {
+    "departingManager": "Maya Chen",
+    "client": "Acme Corp"
+  },
+  "seed": null,
+  "plan": null,
+  "artifacts": null,
+  "approval": null
+}
