@@ -7,6 +7,7 @@
     "run": "tsx src/index.ts run",
     "approve": "tsx src/index.ts approve APPROVE_ACME_HANDOFF",
     "demo": "tsx src/index.ts demo",
+    "demo:ui": "npm run demo && python3 -m http.server 4173",
     "diagnose-calendar": "tsx src/index.ts diagnose-calendar"
   },
   "devDependencies": {
