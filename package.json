@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "seed": "tsx src/index.ts seed",
-    "run": "tsx src/index.ts run",
-    "approve": "tsx src/index.ts approve APPROVE_ACME_HANDOFF",
-    "demo": "tsx src/index.ts demo",
+    "seed": "node --import tsx src/index.ts seed",
+    "run": "node --import tsx src/index.ts run",
+    "approve": "node --import tsx src/index.ts approve APPROVE_ACME_HANDOFF",
+    "demo": "node --import tsx src/index.ts demo",
     "demo:ui": "npm run demo && python3 -m http.server 4173",
-    "diagnose-calendar": "tsx src/index.ts diagnose-calendar"
+    "diagnose-calendar": "node --import tsx src/index.ts diagnose-calendar"
   },
   "devDependencies": {
     "@dietrichgebert/ponytail": "^4.9.0",
