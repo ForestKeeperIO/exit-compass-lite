@@ -264,8 +264,8 @@ async function seed(): Promise<void> {
     if (!calendarId) throw new Error(`Ambiguous GET /api/calendars returned no calendar id: ${JSON.stringify(calendars).slice(0, 500)}`);
     const eventResponse = await post(`/api/calendars/${encodeURIComponent(calendarId)}/events`, {
       title: "Reunión de renovación de Acme Corp",
-      start: seededMeetingStart,
-      end: seededMeetingEnd.toISOString(),
+      start_at: seededMeetingStart,
+      end_at: seededMeetingEnd.toISOString(),
       attendees: [MAYA_EMAIL, ACME_CONTACT_EMAIL],
     });
     const eventId = firstId(eventResponse);
