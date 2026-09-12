@@ -45,7 +45,7 @@ The approval script is hard-coded to require `APPROVE_ACME_HANDOFF`; a different
 - one Acme renewal meeting through the live calendar-scoped route `POST /api/calendars/{calendarId}/events` (the seed discovers `calendarId` from `GET /api/calendars`);
 - one internal delivery note through `POST /api/documents`.
 
-`run` reads only the persisted mail/task/document IDs plus the bounded CRM contacts and Calendar event lists, then calls OpenAI once. It creates `Acme Handoff Brief — Maya Chen` and `Acme Client Update Draft — Awaiting Approval`. It never calls Mail send. `approve` creates these three tasks, once:
+`run` reads the persisted Mail/Task/Doc IDs plus bounded CRM contacts and Calendar events, then calls OpenAI once. It creates `Acme Handoff Brief — Maya Chen` and `Acme Client Update Draft — Awaiting Approval`. The brief includes a ten-item handoff exposure map covering security, pricing, ownership, legal, evidence freshness, implementation acceptance, support, forecast, and procurement. It never calls Mail send. `approve` creates only the three highest-priority containment tasks, once:
 
 1. Complete Acme security questionnaire
 2. Send Acme pricing package
