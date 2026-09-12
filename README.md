@@ -33,6 +33,8 @@ npm run approve
 
 For an immediate credential-free demo of the complete approval boundary, run `npm run demo`. It writes deterministic `local://` IDs to `run.json`, prints the three detected risks, creates the brief/draft artifacts, and then creates exactly three locally simulated approved tasks. This mode is explicitly labeled `LOCAL DEMO`; the normal commands above use the real Ambiguous and OpenAI APIs.
 
+To present it visually in a browser, run `npm run demo:ui` and open `http://localhost:4173/demo.html`. This is a zero-dependency presenter screen backed by the generated `run.local.json` state.
+
 The approval script is hard-coded to require `APPROVE_ACME_HANDOFF`; a different phrase is rejected. `run.json` stores only returned workspace IDs and artifact URLs, so the script can reread the exact seeded records and avoid duplicate runs. Delete or reset `run.json` only when you intentionally want a fresh synthetic scenario in a workspace.
 
 `seed` creates:
