@@ -29,6 +29,10 @@ npm run run
 npm run approve
 ```
 
+`npm run run` is resumable: if `run.json` has no complete seed checkpoint, it automatically resumes `seed` before reading context. This prevents a failed partial seed from leaving the workflow permanently stuck at a precondition error.
+
+For an immediate credential-free demo of the complete approval boundary, run `npm run demo`. It writes deterministic `local://` IDs to `run.json`, prints the three detected risks, creates the brief/draft artifacts, and then creates exactly three locally simulated approved tasks. This mode is explicitly labeled `LOCAL DEMO`; the normal commands above use the real Ambiguous and OpenAI APIs.
+
 The approval script is hard-coded to require `APPROVE_ACME_HANDOFF`; a different phrase is rejected. `run.json` stores only returned workspace IDs and artifact URLs, so the script can reread the exact seeded records and avoid duplicate runs. Delete or reset `run.json` only when you intentionally want a fresh synthetic scenario in a workspace.
 
 `seed` creates:
@@ -36,7 +40,7 @@ The approval script is hard-coded to require `APPROVE_ACME_HANDOFF`; a different
 - three synthetic Acme/Maya email messages through `POST /api/mail/send`;
 - two open Maya tasks through `POST /api/tasks`;
 - one Acme CRM contact through `POST /api/crm/contacts`;
-- one Acme renewal meeting through `POST /api/calendar/events`;
+- one Acme renewal meeting through the live calendar-scoped route `POST /api/calendars/{calendarId}/events` (the seed discovers `calendarId` from `GET /api/calendars`);
 - one internal delivery note through `POST /api/documents`.
 
 `run` reads only the persisted mail/task/document IDs plus the bounded CRM contacts and Calendar event lists, then calls OpenAI once. It creates `Acme Handoff Brief — Maya Chen` and `Acme Client Update Draft — Awaiting Approval`. It never calls Mail send. `approve` creates these three tasks, once:
@@ -73,10 +77,10 @@ The implementation uses the public Ambiguous REST base `https://app.ambiguous.ai
 - `GET /api/mail/:id`, `POST /api/mail/send`
 - `GET /api/crm/contacts`, `POST /api/crm/contacts`
 - `GET /api/tasks/:id`, `POST /api/tasks`
-- `GET /api/calendar/events`, `POST /api/calendar/events`
+- `GET /api/calendars`, `GET/POST /api/calendars/{calendarId}/events`
 - `GET /api/documents/:id`, `POST /api/documents`
 
-The public reference shows the same document block shape, calendar `title/start/end/attendees` fields, task `title/assignee/priority/due` fields, and `Authorization: Bearer ...` authentication. If a workspace's enabled API version differs, the failure is printed with the route and response body rather than silently falling back to invented local data.
+The public reference shows the same document block shape, calendar `title/start/end/attendees` fields, task `title/assignee/priority/due` fields, and `Authorization: Bearer ...` authentication. In the current live workspace, the unscoped `/api/calendar/*` documentation routes return 404; the workspace exposes calendars at `/api/calendars` and events beneath each returned calendar ID. `npm run diagnose-calendar` performs the read-only route check. The code uses the live calendar-scoped route and prints the route/body on failure rather than silently falling back to invented local data.
 
 ## Ponytail foundation
 
