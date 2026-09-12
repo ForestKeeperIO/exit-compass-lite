@@ -8,6 +8,19 @@ const MAYA_EMAIL = "maya.chen@example.com";
 const ACME_CONTACT_EMAIL = "jordan.lee@acme.example";
 const APPROVAL_PHRASE = "APPROVE_ACME_HANDOFF";
 
+const HANDOFF_WATCHOUTS = [
+  ["Security questionnaire due Friday", "A promised client deliverable can miss its deadline during Maya's departure.", "Assign the questionnaire owner and complete the SSO dependency check."],
+  ["Pricing package has no successor", "Maya's pricing promise exists in Mail but no successor owns delivery.", "Assign a pricing owner and confirm the Friday send."],
+  ["Incoming account manager missing from renewal", "Acme may arrive at next week's renewal meeting without the person taking over.", "Name the successor and add them to the event."],
+  ["SSO configuration dependency", "Security review depends on a platform checklist that is not part of the client-facing task.", "Link the platform owner and completion evidence."],
+  ["DPA / legal review owner unclear", "A late privacy or procurement question can stall renewal after the commercial work is done.", "Confirm Legal's reviewer and escalation path."],
+  ["SOC 2 evidence link may be stale", "The security packet can be rejected if its evidence link or expiry date is not checked.", "Validate the current evidence package before sending."],
+  ["Implementation acceptance not recorded", "Renewal risk increases if the last milestone has no written acceptance owner.", "Capture acceptance status and the accountable delivery lead."],
+  ["Support escalation has no successor", "An open customer issue can become an executive surprise after Maya leaves.", "Transfer the escalation with severity, SLA, and next customer update."],
+  ["Renewal forecast is not refreshed", "CRM health can look green while the meeting and commitments are already at risk.", "Update forecast, risk, and close plan after the handoff."],
+  ["Procurement / PO contact unknown", "A successful renewal can still slip if Acme's purchasing path is not known.", "Confirm procurement contact, PO timing, and billing prerequisites."],
+] as const;
+
 type JsonObject = Record<string, unknown>;
 type MaybeEnvelope = JsonObject | JsonObject[];
 
@@ -269,6 +282,8 @@ async function seed(): Promise<void> {
         { type: "paragraph", text: "Synthetic internal note for the Exit Compass demo." },
         { type: "paragraph", text: "Security review depends on the platform team's SSO configuration checklist before the questionnaire can be marked complete." },
         { type: "paragraph", text: "Current relationship owner: Maya Chen. No successor is recorded." },
+        { type: "heading", level: 2, text: "Handoff exposure map" },
+        ...HANDOFF_WATCHOUTS.map(([issue, impact, action], index) => ({ type: "paragraph", text: `${index + 1}. ${issue}: ${impact} Next action: ${action}` })),
       ],
     });
     const noteId = firstId(deliveryNoteResponse);
@@ -525,6 +540,8 @@ function blocksForBrief(plan: HandoffPlan, records: JsonObject[], dueDate: strin
     ...plan.risks.map((risk, index) => ({ type: "paragraph", text: `${index + 1}. ${risk.risk_type}: ${risk.why_it_matters} Deadline: ${risk.deadline ?? "Not confirmed"}. Recommended owner: ${risk.recommended_owner}. Next action: ${risk.next_action}. Evidence: ${String(byId.get(risk.evidence_id)?.url ?? "unknown")}` })),
     { type: "heading", level: 2, text: "Evidence" },
     ...records.map((record) => ({ type: "paragraph", text: `${String(record.kind)} ${String(record.evidence_id)}: ${String(record.url)}` })),
+    { type: "heading", level: 2, text: "Ten handoff exposures to watch" },
+    ...HANDOFF_WATCHOUTS.map(([issue, impact, action], index) => ({ type: "paragraph", text: `${index + 1}. ${issue}: ${impact} Next action: ${action}` })),
     { type: "heading", level: 2, text: "Recommended owner and next action" },
     ...plan.risks.map((risk) => ({ type: "paragraph", text: `${risk.recommended_owner}: ${risk.next_action}` })),
     { type: "heading", level: 2, text: "Draft client update" },
