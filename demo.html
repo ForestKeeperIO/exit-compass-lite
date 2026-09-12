@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exit Compass — Acme Handoff</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1020; --panel:#121a2d; --muted:#9aa7c2; --text:#f5f7ff; --blue:#7aa2ff; --red:#ff8f8f; --green:#79e2b0; --line:#263452; }
+    * { box-sizing:border-box } body { margin:0; background:radial-gradient(circle at 20% 0%,#1b2b56 0,#0b1020 48%); color:var(--text); font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; }
+    main { max-width:1180px; margin:auto; padding:42px 28px 56px } header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:32px }
+    .eyebrow { color:var(--blue); font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:12px } h1 { margin:7px 0 5px; font-size:42px; letter-spacing:-.04em } h2 { margin:0 0 16px; font-size:20px } p { color:var(--muted); margin:0 }
+    .badge { border:1px solid #3866b8; color:#bcd1ff; border-radius:999px; padding:8px 13px; white-space:nowrap; background:#15264a }
+    .hero,.panel { background:rgba(18,26,45,.9); border:1px solid var(--line); border-radius:18px; box-shadow:0 18px 50px #05091666 } .hero { padding:24px; margin-bottom:20px }
+    .hero strong { color:var(--text) } .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:20px 0 } .panel { padding:20px }
+    .risk { min-height:190px } .risk .num { color:var(--red); font-size:12px; font-weight:800; letter-spacing:.1em } .risk h3 { margin:8px 0 9px; font-size:18px } .risk p { font-size:14px } .next { color:var(--green); margin-top:14px; font-size:14px }
+    .columns { display:grid; grid-template-columns:1.2fr .8fr; gap:16px } .row { display:flex; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--line) } .row:last-child { border:0 } .label { color:var(--muted) } code { color:#bcd1ff; font-size:12px; word-break:break-all }
+    .approval { border-color:#2f7a60; background:linear-gradient(135deg,#122a2a,#121a2d) } .approval .status { color:var(--green); font-weight:800; text-transform:uppercase; letter-spacing:.08em; font-size:12px }
+    footer { color:var(--muted); text-align:center; padding-top:26px; font-size:13px } @media(max-width:800px){ header,.columns{display:block}.badge{display:inline-block;margin-top:16px}.grid{grid-template-columns:1fr} .panel{margin-bottom:16px} h1{font-size:34px} }
+  </style>
+</head>
+<body><main>
+  <header><div><div class="eyebrow">Exit Compass Lite · local presenter mode</div><h1>Acme Corp handoff</h1><p>When someone leaves, their work should not leave with them.</p></div><div class="badge">Maya Chen leaves Friday</div></header>
+  <section class="hero"><h2>Manager-ready handoff intelligence</h2><p><strong>Acme Corp renewal next week.</strong> Exit Compass connected fragmented workspace evidence, found exactly three risks, and held all task creation behind explicit approval.</p></section>
+  <h2>Three evidence-backed risks</h2><section id="risks" class="grid"></section>
+  <section class="columns"><div class="panel"><h2>Artifacts & evidence</h2><div class="row"><span class="label">Handoff Brief</span><code id="brief">loading…</code></div><div class="row"><span class="label">Client update</span><code id="draft">loading…</code></div><div class="row"><span class="label">Source records</span><span>8 synthetic records</span></div><div class="row"><span class="label">Model boundary</span><span>1 strict JSON call</span></div></div>
+    <div class="panel approval"><div class="status">Approval boundary</div><h2 style="margin-top:8px">No client message sent</h2><p>Before approval: draft only, zero handoff tasks created.</p><div id="tasks" style="margin-top:18px"></div></div></section>
+  <footer>LOCAL DEMO · synthetic Maya Chen / Acme Corp data · approval phrase: APPROVE_ACME_HANDOFF</footer>
+</main><script>
+const labels={security_due:'Security questionnaire due',pricing_unassigned:'Pricing package unassigned',renewal_missing_incoming_am:'Renewal meeting missing incoming AM'};
+fetch('/run.local.json').then(r=>r.json()).then(s=>{const risks=document.querySelector('#risks'); risks.innerHTML=s.plan.risks.map((r,i)=>`<article class="panel risk"><div class="num">RISK 0${i+1} · ${labels[r.risk_type]}</div><h3>${r.why_it_matters}</h3><p>Evidence: <code>${r.evidence_id}</code></p><div class="next">Next: ${r.next_action}</div></article>`).join(''); document.querySelector('#brief').textContent=s.artifacts.brief.url; document.querySelector('#draft').textContent=s.artifacts.clientUpdateDraft.url; document.querySelector('#tasks').innerHTML='<div style="color:var(--green);font-weight:700">✓ APPROVED · 3 tasks linked to Brief</div>';}).catch(()=>{document.querySelector('#risks').innerHTML='<section class="panel"><h2>Run the demo first</h2><p>In the terminal: <code>npm run demo</code></p></section>'});
+</script></body></html>
