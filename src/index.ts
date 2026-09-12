@@ -170,6 +170,14 @@ function addDays(date: Date, days: number): Date {
   return copy;
 }
 
+function documentContent(blocks: JsonObject[]): string {
+  return blocks.map((block) => {
+    const text = String(block.text ?? "");
+    if (block.type === "heading") return "#".repeat(Math.max(1, Number(block.level ?? 1))) + " " + text;
+    return text;
+  }).join("\n\n");
+}
+
 async function seed(): Promise<void> {
   if (localDemoEnabled()) return localSeed();
   const state = readState();
@@ -277,14 +285,14 @@ async function seed(): Promise<void> {
     const deliveryNoteResponse = await post("/api/documents", {
       type: "doc",
       title: "Nota de entrega de Acme — dependencia técnica",
-      content: [
+      content: documentContent([
         { type: "heading", level: 1, text: "Nota de entrega de Acme" },
         { type: "paragraph", text: "Nota interna sintética para el demo de Exit Compass." },
         { type: "paragraph", text: "La revisión de seguridad depende de la lista de configuración SSO del equipo de plataforma antes de marcar el cuestionario como completo." },
         { type: "paragraph", text: "Responsable actual de la relación: Maya Chen. No hay sucesor registrado." },
         { type: "heading", level: 2, text: "Mapa de exposiciones del traspaso" },
         ...HANDOFF_WATCHOUTS.map(([issue, impact, action], index) => ({ type: "paragraph", text: `${index + 1}. ${issue}: ${impact} Próxima acción: ${action}` })),
-      ],
+      ]),
     });
     const noteId = firstId(deliveryNoteResponse);
     seedData.deliveryNote = { id: noteId, url: recordUrl("document", noteId) };
@@ -582,18 +590,18 @@ async function run(): Promise<void> {
   const briefResponse = await post("/api/documents", {
     type: "doc",
     title: "Brief de traspaso de Acme — Maya Chen",
-    content: blocksForBrief(plan, records, String(state.seed.dueDate)),
+    content: documentContent(blocksForBrief(plan, records, String(state.seed.dueDate))),
   });
   const briefId = firstId(briefResponse);
   const briefUrl = recordUrl("document", briefId);
   const draftResponse = await post("/api/documents", {
     type: "doc",
     title: "Borrador de actualización de Acme — Pendiente de aprobación",
-    content: [
+    content: documentContent([
       { type: "heading", level: 1, text: "Borrador de actualización para Acme" },
       { type: "paragraph", text: plan.draft_client_update },
       { type: "paragraph", text: `Estado: solo borrador. Pendiente de aprobación de la gerencia. No se ha enviado comunicación externa. Brief de traspaso: ${briefUrl}` },
-    ],
+    ]),
   });
   const draftId = firstId(draftResponse);
 
