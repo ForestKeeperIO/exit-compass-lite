@@ -9,16 +9,16 @@ const ACME_CONTACT_EMAIL = "jordan.lee@acme.example";
 const APPROVAL_PHRASE = "APPROVE_ACME_HANDOFF";
 
 const HANDOFF_WATCHOUTS = [
-  ["Security questionnaire due Friday", "A promised client deliverable can miss its deadline during Maya's departure.", "Assign the questionnaire owner and complete the SSO dependency check."],
-  ["Pricing package has no successor", "Maya's pricing promise exists in Mail but no successor owns delivery.", "Assign a pricing owner and confirm the Friday send."],
-  ["Incoming account manager missing from renewal", "Acme may arrive at next week's renewal meeting without the person taking over.", "Name the successor and add them to the event."],
-  ["SSO configuration dependency", "Security review depends on a platform checklist that is not part of the client-facing task.", "Link the platform owner and completion evidence."],
-  ["DPA / legal review owner unclear", "A late privacy or procurement question can stall renewal after the commercial work is done.", "Confirm Legal's reviewer and escalation path."],
-  ["SOC 2 evidence link may be stale", "The security packet can be rejected if its evidence link or expiry date is not checked.", "Validate the current evidence package before sending."],
-  ["Implementation acceptance not recorded", "Renewal risk increases if the last milestone has no written acceptance owner.", "Capture acceptance status and the accountable delivery lead."],
-  ["Support escalation has no successor", "An open customer issue can become an executive surprise after Maya leaves.", "Transfer the escalation with severity, SLA, and next customer update."],
-  ["Renewal forecast is not refreshed", "CRM health can look green while the meeting and commitments are already at risk.", "Update forecast, risk, and close plan after the handoff."],
-  ["Procurement / PO contact unknown", "A successful renewal can still slip if Acme's purchasing path is not known.", "Confirm procurement contact, PO timing, and billing prerequisites."],
+  ["Cuestionario de seguridad vence el viernes", "Un entregable prometido al cliente puede incumplirse durante la salida de Maya.", "Asignar a la persona responsable y completar la revisión de la dependencia SSO."],
+  ["El paquete de precios no tiene sucesor", "La promesa de precios de Maya existe en Mail, pero nadie más es responsable de entregarla.", "Asignar responsable y confirmar el envío del viernes."],
+  ["Falta la nueva persona responsable en la renovación", "Acme puede llegar a la reunión de renovación sin conocer a quien tomará la cuenta.", "Nombrar al sucesor y agregarlo al evento."],
+  ["Dependencia de configuración SSO", "La revisión de seguridad depende de una lista técnica que no aparece en la tarea del cliente.", "Vincular al responsable técnico y la evidencia de finalización."],
+  ["Responsable de revisión DPA / Legal no definido", "Una pregunta tardía de privacidad o compras puede frenar la renovación después del trabajo comercial.", "Confirmar la persona revisora de Legal y la ruta de escalamiento."],
+  ["El enlace de evidencia SOC 2 puede estar vencido", "El paquete de seguridad puede ser rechazado si no se valida su enlace o fecha de vigencia.", "Validar el paquete de evidencia actual antes de enviarlo."],
+  ["La aceptación de implementación no está registrada", "El riesgo de renovación aumenta si el último hito no tiene responsable de aceptación escrita.", "Registrar el estado de aceptación y al líder de entrega."],
+  ["La escalación de soporte no tiene sucesor", "Un problema abierto del cliente puede convertirse en una sorpresa ejecutiva después de la salida de Maya.", "Transferir la escalación con severidad, SLA y próxima actualización."],
+  ["El pronóstico de renovación no está actualizado", "El CRM puede verse saludable aunque la reunión y los compromisos ya estén en riesgo.", "Actualizar pronóstico, riesgo y plan de cierre después del traspaso."],
+  ["Contacto de Compras / orden de compra desconocido", "La renovación puede retrasarse aunque se cierre comercialmente si no se conoce el proceso de compras de Acme.", "Confirmar contacto de Compras, fecha de orden y requisitos de facturación."],
 ] as const;
 
 type JsonObject = Record<string, unknown>;
@@ -114,7 +114,7 @@ function firstId(value: unknown): string {
     const nested = asObject(object[key]).id;
     if (typeof nested === "string" && nested) return nested;
   }
-  throw new Error(`Ambiguous response did not contain a record id: ${JSON.stringify(value).slice(0, 500)}`);
+    throw new Error(`La respuesta de Ambiguous no contiene un ID de registro: ${JSON.stringify(value).slice(0, 500)}`);
 }
 
 function listItems(value: unknown): JsonObject[] {
@@ -143,7 +143,7 @@ function readState(): RunState {
     return JSON.parse(readFileSync(path, "utf8")) as RunState;
   } catch {
     if (path !== RUN_PATH) return JSON.parse(readFileSync(RUN_PATH, "utf8")) as RunState;
-    throw new Error("run.json is missing or invalid.");
+    throw new Error("run.json no existe o no es válido.");
   }
 }
 
@@ -174,7 +174,7 @@ async function seed(): Promise<void> {
   if (localDemoEnabled()) return localSeed();
   const state = readState();
   if (state.seed && isCompleteSeed(state.seed)) {
-    console.log("Seed already exists in run.json; keeping it to avoid duplicate workspace records.");
+    console.log("La semilla ya existe en run.json; se conserva para evitar registros duplicados.");
     printSeed(state.seed);
     return;
   }
@@ -206,7 +206,7 @@ async function seed(): Promise<void> {
       const match = (error instanceof Error ? error.message : String(error)).match(/contact_id["']?\s*:\s*["']([^"']+)["']/);
       if (!match) throw error;
       contactId = match[1];
-      console.log(`Reusing existing synthetic Acme contact ${contactId}.`);
+      console.log(`Se reutiliza el contacto sintético existente de Acme: ${contactId}.`);
     }
     seedData.contact = { id: contactId, url: recordUrl("contact", contactId) };
     saveState(state);
@@ -214,16 +214,16 @@ async function seed(): Promise<void> {
 
   const mailBodies = [
     {
-      subject: "Acme renewal: security questionnaire and pricing due Friday",
-      body_markdown: `From: Acme Corp <${ACME_CONTACT_EMAIL}>\n\nHi Maya, please send the completed security questionnaire and the renewal pricing package by ${seededDueDate} (Friday).`,
+      subject: "Renovación de Acme: cuestionario de seguridad y precios vencen el viernes",
+      body_markdown: `De: Acme Corp <${ACME_CONTACT_EMAIL}>\n\nHola Maya, por favor envía el cuestionario de seguridad completo y el paquete de precios de renovación antes del ${seededDueDate} (viernes).`,
     },
     {
-      subject: "Re: Acme renewal: security questionnaire and pricing due Friday",
-      body_markdown: `From: Maya Chen <${MAYA_EMAIL}>\n\nWe will send both the completed security questionnaire and pricing package by Friday, ${seededDueDate}.`,
+      subject: "Re: Renovación de Acme: cuestionario de seguridad y precios vencen el viernes",
+      body_markdown: `De: Maya Chen <${MAYA_EMAIL}>\n\nEnviaremos el cuestionario de seguridad completo y el paquete de precios el viernes ${seededDueDate}.`,
     },
     {
-      subject: "Acme renewal meeting confirmed for next week",
-      body_markdown: `From: Acme Corp <${ACME_CONTACT_EMAIL}>\n\nThe renewal meeting is confirmed for next week. Please include the incoming account manager in the meeting.`,
+      subject: "Reunión de renovación de Acme confirmada para la próxima semana",
+      body_markdown: `De: Acme Corp <${ACME_CONTACT_EMAIL}>\n\nLa reunión de renovación está confirmada para la próxima semana. Por favor incluye a la nueva persona responsable de la cuenta.`,
     },
   ];
   const inbox = process.env.AMBIGUOUS_INBOX_ADDRESS ?? "exit-compass@example.com";
@@ -238,13 +238,13 @@ async function seed(): Promise<void> {
 
   const taskBodies = [
     {
-      title: "Maya: Follow up on Acme pricing",
-      description: `Open Maya Chen task for ${seededDueDate}. Client: Acme Corp.`,
+      title: "Maya: Dar seguimiento a precios de Acme",
+      description: `Tarea abierta de Maya Chen para ${seededDueDate}. Cliente: Acme Corp.`,
       priority: "high",
     },
     {
-      title: "Maya: Coordinate Acme security review",
-      description: `Open Maya Chen task for ${seededDueDate}. Client: Acme Corp.`,
+      title: "Maya: Coordinar revisión de seguridad de Acme",
+      description: `Tarea abierta de Maya Chen para ${seededDueDate}. Cliente: Acme Corp.`,
       priority: "high",
     },
   ];
@@ -263,7 +263,7 @@ async function seed(): Promise<void> {
     const calendarId = typeof calendar.id === "string" ? calendar.id : "";
     if (!calendarId) throw new Error(`Ambiguous GET /api/calendars returned no calendar id: ${JSON.stringify(calendars).slice(0, 500)}`);
     const eventResponse = await post(`/api/calendars/${encodeURIComponent(calendarId)}/events`, {
-      title: "Acme Corp renewal meeting",
+      title: "Reunión de renovación de Acme Corp",
       start: seededMeetingStart,
       end: seededMeetingEnd.toISOString(),
       attendees: [MAYA_EMAIL, ACME_CONTACT_EMAIL],
@@ -276,14 +276,14 @@ async function seed(): Promise<void> {
   if (!asObject(seedData.deliveryNote).id) {
     const deliveryNoteResponse = await post("/api/documents", {
       type: "doc",
-      title: "Acme delivery note — technical dependency",
+      title: "Nota de entrega de Acme — dependencia técnica",
       content: [
-        { type: "heading", level: 1, text: "Acme delivery note" },
-        { type: "paragraph", text: "Synthetic internal note for the Exit Compass demo." },
-        { type: "paragraph", text: "Security review depends on the platform team's SSO configuration checklist before the questionnaire can be marked complete." },
-        { type: "paragraph", text: "Current relationship owner: Maya Chen. No successor is recorded." },
-        { type: "heading", level: 2, text: "Handoff exposure map" },
-        ...HANDOFF_WATCHOUTS.map(([issue, impact, action], index) => ({ type: "paragraph", text: `${index + 1}. ${issue}: ${impact} Next action: ${action}` })),
+        { type: "heading", level: 1, text: "Nota de entrega de Acme" },
+        { type: "paragraph", text: "Nota interna sintética para el demo de Exit Compass." },
+        { type: "paragraph", text: "La revisión de seguridad depende de la lista de configuración SSO del equipo de plataforma antes de marcar el cuestionario como completo." },
+        { type: "paragraph", text: "Responsable actual de la relación: Maya Chen. No hay sucesor registrado." },
+        { type: "heading", level: 2, text: "Mapa de exposiciones del traspaso" },
+        ...HANDOFF_WATCHOUTS.map(([issue, impact, action], index) => ({ type: "paragraph", text: `${index + 1}. ${issue}: ${impact} Próxima acción: ${action}` })),
       ],
     });
     const noteId = firstId(deliveryNoteResponse);
@@ -291,21 +291,30 @@ async function seed(): Promise<void> {
     saveState(state);
   }
 
-  if (!isCompleteSeed(seedData)) throw new Error("Seed checkpoint is incomplete. Run `npm run seed` again to resume it.");
+  if (!isCompleteSeed(seedData)) throw new Error("El checkpoint de la semilla está incompleto. Ejecuta `npm run seed` otra vez para continuar.");
   saveState(state);
   printSeed(seedData);
-  console.log("\nSeed complete. Run `npm run run` to analyze this bounded context.");
+  console.log("\nSemilla completa. Ejecuta `npm run run` para analizar este contexto acotado.");
 }
 
 function printSeed(seed: JsonObject): void {
-  console.log("Seeded synthetic Maya Chen / Acme Corp records:");
+  console.log("Registros sintéticos de Maya Chen / Acme Corp creados:");
+  const labels: Record<string, string> = { contact: "contacto", mail: "correo", tasks: "tareas", calendarEvent: "evento de calendario", deliveryNote: "nota de entrega" };
   for (const [key, value] of Object.entries(seed)) {
     if (key === "mail" || key === "tasks") {
-      for (const item of value as JsonObject[]) console.log(`  ${key}: ${String(item.url)}`);
+      for (const item of value as JsonObject[]) console.log(`  ${labels[key]}: ${String(item.url)}`);
     } else if (asObject(value).url) {
-      console.log(`  ${key}: ${String(asObject(value).url)}`);
+      console.log(`  ${labels[key] ?? key}: ${String(asObject(value).url)}`);
     }
   }
+}
+
+function riskLabel(riskType: string): string {
+  return ({
+    security_due: "cuestionario de seguridad con fecha límite",
+    pricing_unassigned: "paquete de precios sin responsable",
+    renewal_missing_incoming_am: "nueva persona responsable ausente en la renovación",
+  } as Record<string, string>)[riskType] ?? riskType;
 }
 
 function isCompleteSeed(seed: JsonObject): boolean {
@@ -347,24 +356,24 @@ function localSeed(): void {
   state.approval = null;
   saveState(state);
   printSeed(seed);
-  console.log("\nLocal demo seed complete.");
+  console.log("\nSemilla del demo local completa.");
 }
 
 function localPlan(dueDate: string): HandoffPlan {
   return {
-    summary: "Acme renewal work is at risk because Maya leaves Friday while security and pricing commitments are due Friday and the renewal meeting is next week.",
+    summary: "La renovación de Acme está en riesgo porque Maya se va el viernes, mientras los compromisos de seguridad y precios vencen ese día y la reunión de renovación es la próxima semana.",
     risks: [
-      { risk_type: "security_due", why_it_matters: "Acme expects the security questionnaire by Friday, and the internal dependency note says SSO configuration is still required.", deadline: dueDate, recommended_owner: "Incoming account manager", next_action: "Assign the SSO checklist owner and complete the questionnaire before Friday.", evidence_id: "local_mail_security" },
-      { risk_type: "pricing_unassigned", why_it_matters: "Maya promised pricing by Friday, but the existing open task does not have a successor after her departure.", deadline: dueDate, recommended_owner: "Sales manager delegate", next_action: "Assign the pricing package and confirm the delivery owner before Friday.", evidence_id: "local_mail_maya_commitment" },
-      { risk_type: "renewal_missing_incoming_am", why_it_matters: "The renewal meeting is next week and the confirmation asks for the incoming account manager, who is not yet recorded.", deadline: null, recommended_owner: "Sales manager", next_action: "Name the successor and add them to the renewal meeting before the client call.", evidence_id: "local_mail_renewal" },
+      { risk_type: "security_due", why_it_matters: "Acme espera el cuestionario de seguridad el viernes y la nota interna confirma que la configuración SSO sigue pendiente.", deadline: dueDate, recommended_owner: "Nueva persona responsable de la cuenta", next_action: "Asignar la lista SSO y completar el cuestionario antes del viernes.", evidence_id: "local_mail_security" },
+      { risk_type: "pricing_unassigned", why_it_matters: "Maya prometió los precios para el viernes, pero la tarea abierta no tiene sucesor después de su salida.", deadline: dueDate, recommended_owner: "Delegado de la gerencia comercial", next_action: "Asignar el paquete de precios y confirmar quién lo enviará el viernes.", evidence_id: "local_mail_maya_commitment" },
+      { risk_type: "renewal_missing_incoming_am", why_it_matters: "La reunión de renovación es la próxima semana y la confirmación pide incluir a la nueva persona responsable, que aún no está registrada.", deadline: null, recommended_owner: "Gerencia comercial", next_action: "Nombrar al sucesor y agregarlo a la reunión antes de la llamada con el cliente.", evidence_id: "local_mail_renewal" },
     ],
-    draft_client_update: "Hi Acme team, we are coordinating the security questionnaire and renewal pricing package ahead of Friday and will include the incoming account manager in next week's renewal meeting. We will confirm the handoff owner shortly.",
+    draft_client_update: "Hola equipo de Acme, estamos coordinando el cuestionario de seguridad y el paquete de precios de renovación antes del viernes, e incluiremos a la nueva persona responsable en la reunión de renovación de la próxima semana. Confirmaremos pronto a la persona responsable del traspaso.",
   };
 }
 
 function runLocal(): void {
   const state = readState();
-  if (!state.seed || !isCompleteSeed(state.seed)) throw new Error("Local seed is missing. Run `npm run demo`.");
+  if (!state.seed || !isCompleteSeed(state.seed)) throw new Error("Falta la semilla local. Ejecuta `npm run demo`.");
   const plan = localPlan(String(state.seed.dueDate));
   state.plan = plan;
   state.artifacts = {
@@ -372,22 +381,22 @@ function runLocal(): void {
     clientUpdateDraft: { id: "local_doc_client_update", url: localUrl("docs", "local_doc_client_update") },
   };
   saveState(state);
-  console.log("\nExit Compass found exactly three evidence-backed risks (LOCAL DEMO):");
-  for (const risk of plan.risks) console.log(`  - ${risk.risk_type}: ${risk.next_action} [${risk.evidence_id}]`);
-  console.log(`\nHandoff Brief: ${String(state.artifacts.brief.url)}`);
-  console.log(`Unsent client-update draft: ${String(state.artifacts.clientUpdateDraft.url)}`);
-  console.log("\nApproval boundary: no client email was sent and no tasks were created.");
+  console.log("\nExit Compass encontró exactamente tres riesgos respaldados por evidencia (DEMO LOCAL):");
+  for (const risk of plan.risks) console.log(`  - ${riskLabel(risk.risk_type)}: ${risk.next_action} [${risk.evidence_id}]`);
+  console.log(`\nBrief de traspaso: ${String(state.artifacts.brief.url)}`);
+  console.log(`Borrador de actualización al cliente sin enviar: ${String(state.artifacts.clientUpdateDraft.url)}`);
+  console.log("\nLímite de aprobación: no se envió ningún correo al cliente y no se crearon tareas.");
 }
 
 function approveLocal(phrase: string): void {
-  if (phrase !== APPROVAL_PHRASE) throw new Error(`Approval blocked. Use exactly: ${APPROVAL_PHRASE}`);
+  if (phrase !== APPROVAL_PHRASE) throw new Error(`Aprobación bloqueada. Usa exactamente: ${APPROVAL_PHRASE}`);
   const state = readState();
-  if (!state.seed || !state.plan || !state.artifacts) throw new Error("Run `npm run demo` before approval.");
-  const titles = ["Complete Acme security questionnaire", "Send Acme pricing package", "Prepare Acme renewal meeting handoff"];
+  if (!state.seed || !state.plan || !state.artifacts) throw new Error("Ejecuta `npm run demo` antes de aprobar.");
+  const titles = ["Completar cuestionario de seguridad de Acme", "Enviar paquete de precios de Acme", "Preparar traspaso de reunión de renovación de Acme"];
   const taskIds = titles.map((_, index) => `local_handoff_task_${index + 1}`);
   state.approval = { status: "approved", taskIds };
   saveState(state);
-  console.log("Approval accepted. Exactly three handoff tasks exist and each links to the Handoff Brief (LOCAL DEMO):");
+  console.log("Aprobación aceptada. Existen exactamente tres tareas de traspaso y cada una enlaza al Brief (DEMO LOCAL):");
   for (const [index, id] of taskIds.entries()) console.log(`  ${index + 1}. ${titles[index]}: ${localUrl("tasks", id)} -> ${String(state.artifacts.brief.url)}`);
 }
 
@@ -406,7 +415,7 @@ async function readBoundedContext(seed: JsonObject): Promise<JsonObject[]> {
   const mail = await Promise.all((seed.mail as JsonObject[]).map(({ id }) => get(`/api/mail/${String(id)}`)));
   const tasks = await Promise.all((seed.tasks as JsonObject[]).map(({ id }) => get(`/api/tasks/${String(id)}`)));
   const calendarId = String(asObject(seed.calendarEvent).calendarId ?? "");
-  if (!calendarId) throw new Error("Seeded calendar event is missing calendarId; run `npm run seed` again.");
+  if (!calendarId) throw new Error("Al evento de calendario le falta calendarId; ejecuta `npm run seed` otra vez.");
   const [note, contacts, events] = await Promise.all([
     get(`/api/documents/${seedId(seed, "deliveryNote")}`),
     get("/api/crm/contacts?limit=25"),
@@ -480,11 +489,11 @@ async function openAiPlan(records: JsonObject[], dueDate: string): Promise<Hando
       input: [
         {
           role: "system",
-          content: "You are Exit Compass. Analyze only the supplied synthetic workspace evidence. Return exactly the three required risks, prioritizing evidence over assumptions. Never claim to have sent anything. The draft is for manager review only.",
+          content: "Eres Exit Compass. Analiza únicamente la evidencia sintética del espacio de trabajo proporcionada. Devuelve exactamente los tres riesgos requeridos, priorizando la evidencia sobre las suposiciones. Nunca afirmes que enviaste algo. El borrador es solo para revisión de la gerencia.",
         },
         {
           role: "user",
-          content: `Maya Chen leaves Friday. Acme Corp has a renewal meeting next week. The known due date is ${dueDate}. Identify these required risk types exactly once: security_due, pricing_unassigned, renewal_missing_incoming_am. Every risk must cite one supplied evidence_id.\n\nBOUNDED EVIDENCE:\n${compactContext(records)}`,
+          content: `Maya Chen se va el viernes. Acme Corp tiene una reunión de renovación la próxima semana. La fecha límite conocida es ${dueDate}. Identifica exactamente una vez cada tipo de riesgo requerido: security_due, pricing_unassigned, renewal_missing_incoming_am. Cada riesgo debe citar un evidence_id proporcionado.\n\nEVIDENCIA ACOTADA:\n${compactContext(records)}`,
         },
       ],
       text: { format: { type: "json_schema", name: "exit_compass_handoff", strict: true, schema: planSchema(evidenceIds) } },
@@ -503,7 +512,7 @@ async function openAiPlan(records: JsonObject[], dueDate: string): Promise<Hando
   try {
     parsed = JSON.parse(outputText);
   } catch {
-    throw new Error(`OpenAI returned non-JSON structured output: ${outputText.slice(0, 500)}`);
+    throw new Error(`OpenAI devolvió una salida estructurada que no es JSON: ${outputText.slice(0, 500)}`);
   }
   validatePlan(parsed, evidenceIds);
   return parsed as HandoffPlan;
@@ -513,16 +522,16 @@ function validatePlan(value: unknown, evidenceIds: string[]): asserts value is H
   const plan = asObject(value);
   const risks = plan.risks;
   if (typeof plan.summary !== "string" || typeof plan.draft_client_update !== "string" || !Array.isArray(risks) || risks.length !== 3) {
-    throw new Error("Structured output validation failed: expected summary, exactly three risks, and draft_client_update.");
+    throw new Error("Falló la validación de salida estructurada: se esperaba resumen, exactamente tres riesgos y draft_client_update.");
   }
   const types = new Set<string>();
   for (const item of risks) {
     const risk = asObject(item);
     if (typeof risk.risk_type !== "string" || types.has(risk.risk_type) || !["security_due", "pricing_unassigned", "renewal_missing_incoming_am"].includes(risk.risk_type)) {
-      throw new Error("Structured output validation failed: risk types must be the three required unique values.");
+      throw new Error("Falló la validación de salida estructurada: los tipos de riesgo deben ser los tres valores únicos requeridos.");
     }
     if (typeof risk.why_it_matters !== "string" || (risk.deadline !== null && typeof risk.deadline !== "string") || typeof risk.recommended_owner !== "string" || typeof risk.next_action !== "string" || typeof risk.evidence_id !== "string" || !evidenceIds.includes(risk.evidence_id)) {
-      throw new Error("Structured output validation failed: every risk needs valid fields and seeded evidence.");
+      throw new Error("Falló la validación de salida estructurada: cada riesgo necesita campos válidos y evidencia sembrada.");
     }
     types.add(risk.risk_type);
   }
@@ -531,23 +540,23 @@ function validatePlan(value: unknown, evidenceIds: string[]): asserts value is H
 function blocksForBrief(plan: HandoffPlan, records: JsonObject[], dueDate: string): JsonObject[] {
   const byId = new Map(records.map((record) => [String(record.evidence_id), record]));
   return [
-    { type: "heading", level: 1, text: "Acme Handoff Brief — Maya Chen" },
-    { type: "heading", level: 2, text: "Maya’s departure context" },
-    { type: "paragraph", text: `Maya Chen leaves Friday, ${dueDate}. Acme Corp has a renewal meeting next week.` },
-    { type: "heading", level: 2, text: "Client status" },
+    { type: "heading", level: 1, text: "Brief de traspaso de Acme — Maya Chen" },
+    { type: "heading", level: 2, text: "Contexto de salida de Maya" },
+    { type: "paragraph", text: `Maya Chen se va el viernes ${dueDate}. Acme Corp tiene una reunión de renovación la próxima semana.` },
+    { type: "heading", level: 2, text: "Estado del cliente" },
     { type: "paragraph", text: plan.summary },
-    { type: "heading", level: 2, text: "Top risks" },
-    ...plan.risks.map((risk, index) => ({ type: "paragraph", text: `${index + 1}. ${risk.risk_type}: ${risk.why_it_matters} Deadline: ${risk.deadline ?? "Not confirmed"}. Recommended owner: ${risk.recommended_owner}. Next action: ${risk.next_action}. Evidence: ${String(byId.get(risk.evidence_id)?.url ?? "unknown")}` })),
-    { type: "heading", level: 2, text: "Evidence" },
+    { type: "heading", level: 2, text: "Riesgos principales" },
+    ...plan.risks.map((risk, index) => ({ type: "paragraph", text: `${index + 1}. ${riskLabel(risk.risk_type)}: ${risk.why_it_matters} Fecha límite: ${risk.deadline ?? "No confirmada"}. Responsable recomendado: ${risk.recommended_owner}. Próxima acción: ${risk.next_action}. Evidencia: ${String(byId.get(risk.evidence_id)?.url ?? "desconocida")}` })),
+    { type: "heading", level: 2, text: "Evidencia" },
     ...records.map((record) => ({ type: "paragraph", text: `${String(record.kind)} ${String(record.evidence_id)}: ${String(record.url)}` })),
-    { type: "heading", level: 2, text: "Ten handoff exposures to watch" },
-    ...HANDOFF_WATCHOUTS.map(([issue, impact, action], index) => ({ type: "paragraph", text: `${index + 1}. ${issue}: ${impact} Next action: ${action}` })),
-    { type: "heading", level: 2, text: "Recommended owner and next action" },
+    { type: "heading", level: 2, text: "Diez exposiciones del traspaso" },
+    ...HANDOFF_WATCHOUTS.map(([issue, impact, action], index) => ({ type: "paragraph", text: `${index + 1}. ${issue}: ${impact} Próxima acción: ${action}` })),
+    { type: "heading", level: 2, text: "Responsable recomendado y próxima acción" },
     ...plan.risks.map((risk) => ({ type: "paragraph", text: `${risk.recommended_owner}: ${risk.next_action}` })),
-    { type: "heading", level: 2, text: "Draft client update" },
+    { type: "heading", level: 2, text: "Borrador de actualización al cliente" },
     { type: "paragraph", text: plan.draft_client_update },
-    { type: "heading", level: 2, text: "Approval status" },
-    { type: "paragraph", text: `Awaiting manager approval. No external communication has been sent. Approval phrase: ${APPROVAL_PHRASE}.` },
+    { type: "heading", level: 2, text: "Estado de aprobación" },
+    { type: "paragraph", text: `Pendiente de aprobación de la gerencia. No se ha enviado comunicación externa. Frase de aprobación: ${APPROVAL_PHRASE}.` },
   ];
 }
 
@@ -555,14 +564,14 @@ async function run(): Promise<void> {
   if (localDemoEnabled()) return runLocal();
   let state = readState();
   if (!state.seed || !isCompleteSeed(state.seed)) {
-    console.log("Seed checkpoint is missing or incomplete; resuming seed before analysis.");
+    console.log("Falta el checkpoint de la semilla o está incompleto; se reanuda la semilla antes del análisis.");
     await seed();
     state = readState();
   }
-  if (!isCompleteSeed(state.seed)) throw new Error("Seed is still incomplete after resume; inspect the preceding API error.");
+  if (!isCompleteSeed(state.seed)) throw new Error("La semilla sigue incompleta después de reanudarla; revisa el error de API anterior.");
   if (state.artifacts && state.plan) {
-    console.log(`Run already complete. Brief: ${String(state.artifacts.brief.url)}`);
-    console.log(`Client draft: ${String(state.artifacts.clientUpdateDraft.url)}`);
+    console.log(`La ejecución ya está completa. Brief: ${String(state.artifacts.brief.url)}`);
+    console.log(`Borrador para el cliente: ${String(state.artifacts.clientUpdateDraft.url)}`);
     return;
   }
 
@@ -572,18 +581,18 @@ async function run(): Promise<void> {
 
   const briefResponse = await post("/api/documents", {
     type: "doc",
-    title: "Acme Handoff Brief — Maya Chen",
+    title: "Brief de traspaso de Acme — Maya Chen",
     content: blocksForBrief(plan, records, String(state.seed.dueDate)),
   });
   const briefId = firstId(briefResponse);
   const briefUrl = recordUrl("document", briefId);
   const draftResponse = await post("/api/documents", {
     type: "doc",
-    title: "Acme Client Update Draft — Awaiting Approval",
+    title: "Borrador de actualización de Acme — Pendiente de aprobación",
     content: [
-      { type: "heading", level: 1, text: "Acme Client Update Draft" },
+      { type: "heading", level: 1, text: "Borrador de actualización para Acme" },
       { type: "paragraph", text: plan.draft_client_update },
-      { type: "paragraph", text: `Status: Draft only. Awaiting manager approval. No external communication has been sent. Handoff Brief: ${briefUrl}` },
+      { type: "paragraph", text: `Estado: solo borrador. Pendiente de aprobación de la gerencia. No se ha enviado comunicación externa. Brief de traspaso: ${briefUrl}` },
     ],
   });
   const draftId = firstId(draftResponse);
@@ -593,12 +602,12 @@ async function run(): Promise<void> {
     clientUpdateDraft: { id: draftId, url: recordUrl("document", draftId) },
   };
   saveState(state);
-  console.log("\nExit Compass found exactly three evidence-backed risks:");
+  console.log("\nExit Compass encontró exactamente tres riesgos respaldados por evidencia:");
   for (const risk of plan.risks) console.log(`  - ${risk.risk_type}: ${risk.next_action} [${risk.evidence_id}]`);
-  console.log(`\nHandoff Brief: ${briefUrl}`);
-  console.log(`Unsent client-update draft: ${recordUrl("document", draftId)}`);
-  console.log(`\nApproval boundary: no client email was sent and no tasks were created.`);
-  console.log(`Run: npm run approve`);
+  console.log(`\nBrief de traspaso: ${briefUrl}`);
+  console.log(`Borrador de actualización sin enviar: ${recordUrl("document", draftId)}`);
+  console.log(`\nLímite de aprobación: no se envió correo al cliente y no se crearon tareas.`);
+  console.log(`Ejecuta: npm run approve`);
 }
 
 async function diagnoseCalendar(): Promise<void> {
@@ -608,11 +617,11 @@ async function diagnoseCalendar(): Promise<void> {
     "/api/calendars",
     "/api/calendar",
   ];
-  console.log("Calendar route probe (read-only):");
+  console.log("Comprobación de rutas de Calendar (solo lectura):");
   for (const path of paths) {
     try {
       const response = await get(path);
-      console.log(`  ${path} -> available ${JSON.stringify(response).slice(0, 220)}`);
+      console.log(`  ${path} -> disponible ${JSON.stringify(response).slice(0, 220)}`);
     } catch (error) {
       console.log(`  ${path} -> ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -624,7 +633,7 @@ async function diagnoseCalendar(): Promise<void> {
     const path = `/api/calendars/${encodeURIComponent(calendarId)}/events?limit=1`;
     try {
       const response = await get(path);
-      console.log(`  ${path} -> available ${JSON.stringify(response).slice(0, 220)}`);
+      console.log(`  ${path} -> disponible ${JSON.stringify(response).slice(0, 220)}`);
     } catch (error) {
       console.log(`  ${path} -> ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -634,15 +643,15 @@ async function diagnoseCalendar(): Promise<void> {
 }
 
 async function approve(phrase: string): Promise<void> {
-  if (phrase !== APPROVAL_PHRASE) throw new Error(`Approval blocked. Use exactly: ${APPROVAL_PHRASE}`);
+  if (phrase !== APPROVAL_PHRASE) throw new Error(`Aprobación bloqueada. Usa exactamente: ${APPROVAL_PHRASE}`);
   if (localDemoEnabled()) return approveLocal(phrase);
   const state = readState();
-  if (!state.seed || !state.plan || !state.artifacts) throw new Error("Run `npm run run` before approval.");
+  if (!state.seed || !state.plan || !state.artifacts) throw new Error("Ejecuta `npm run run` antes de aprobar.");
   const briefUrl = String(state.artifacts.brief.url);
   const titles = [
-    "Complete Acme security questionnaire",
-    "Send Acme pricing package",
-    "Prepare Acme renewal meeting handoff",
+    "Completar cuestionario de seguridad de Acme",
+    "Enviar paquete de precios de Acme",
+    "Preparar traspaso de reunión de renovación de Acme",
   ];
   const taskIds = [...(state.approval?.taskIds ?? [])];
   state.approval = { status: "in_progress", taskIds };
@@ -650,7 +659,7 @@ async function approve(phrase: string): Promise<void> {
   for (let index = taskIds.length; index < titles.length; index += 1) {
     const task = await post("/api/tasks", {
       title: titles[index],
-      description: `Manager-approved Acme handoff action. Recommended owner: incoming account manager or manager delegate. Handoff Brief: ${briefUrl}`,
+      description: `Acción de traspaso de Acme aprobada por la gerencia. Responsable recomendado: nueva persona de la cuenta o delegado de gerencia. Brief de traspaso: ${briefUrl}`,
       priority: "high",
     });
     taskIds.push(firstId(task));
@@ -659,7 +668,7 @@ async function approve(phrase: string): Promise<void> {
   }
   state.approval = { status: "approved", taskIds };
   saveState(state);
-  console.log("Approval accepted. Exactly three handoff tasks exist and each description links to the Handoff Brief:");
+  console.log("Aprobación aceptada. Existen exactamente tres tareas de traspaso y cada descripción enlaza al Brief:");
   for (const [index, id] of taskIds.entries()) console.log(`  ${index + 1}. ${titles[index]}: ${recordUrl("task", id)}`);
 }
 
@@ -677,7 +686,7 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "diagnose-calendar") return diagnoseCalendar();
-  throw new Error("Usage: npm run seed | npm run run | npm run approve | npm run demo | npm run diagnose-calendar");
+  throw new Error("Uso: npm run seed | npm run run | npm run approve | npm run demo | npm run diagnose-calendar");
 }
 
 main().catch((error: unknown) => {
